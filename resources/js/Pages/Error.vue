@@ -3,7 +3,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 
 defineProps({
-    title: String,
+    errorTitle: String,
     body: String
 })
 
@@ -12,7 +12,7 @@ defineProps({
 <template>
     <AuthenticatedLayout>
         <div class="py-16 text-center dark:text-gray-100">
-            <h1 class="text-2xl">{{ title }}</h1>
+            <h1 class="text-2xl">{{ errorTitle }}</h1>
             <div>{{ body }}</div>
         </div>
     </AuthenticatedLayout>
