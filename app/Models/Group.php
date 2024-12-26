@@ -59,6 +59,7 @@ class Group extends Model
 
     public function adminUsers(): BelongsToMany
     {
+        //its return a collection of users who are admin of the group
         return $this->belongsToMany(User::class, 'group_users')
             ->wherePivot('role', GroupUserRole::ADMIN->value);
     }

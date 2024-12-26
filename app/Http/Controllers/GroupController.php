@@ -17,6 +17,7 @@ use App\Http\Resources\PostResource;
 use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\GroupResource;
+use App\Notifications\RequestApproved;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreGroupRequest;
 use App\Notifications\InvitationInGroup;
@@ -24,6 +25,8 @@ use App\Http\Requests\InviteUsersRequest;
 use App\Http\Requests\UpdateGroupRequest;
 use App\Http\Resources\GroupUserResource;
 use App\Notifications\InvitationApproved;
+use App\Notifications\RequestToJoinGroup;
+use Illuminate\Support\Facades\Notification;
 use App\Http\Resources\PostAttachmentResource;
 
 class GroupController extends Controller
@@ -65,6 +68,7 @@ class GroupController extends Controller
             ->join('group_users AS gu', 'gu.user_id', 'users.id')
             ->orderBy('users.name')
             ->where('group_id', $group->id)
+            ->where('gu.status', GroupUserStatus::APPROVED->value) // only approved users
             ->get();
         $requests = $group->pendingUsers()->orderBy('name')->get();
 
@@ -187,7 +191,6 @@ class GroupController extends Controller
 
         $user->notify(new InvitationInGroup($group, $hours, $token));
 
-
         return back()->with('success', 'User was invited to join to group');
     }
 
@@ -220,5 +223,66 @@ class GroupController extends Controller
 
         return redirect(route('group.profile', $groupUser->group))
             ->with('success', 'You accepted to join to group "' . $groupUser->group->name . '"');
+    }
+
+    public function join(Group $group)
+    {
+        $user = \request()->user();
+
+        $status = GroupUserStatus::APPROVED->value;
+        $successMessage = 'You have joined to group "' . $group->name . '"';
+        if (!$group->auto_approval) {
+            $status = GroupUserStatus::PENDING->value;
+
+            // send notification to admins so we used Notification facade becuse it provides sending mail to many users
+            Notification::send($group->adminUsers, new RequestToJoinGroup($group, $user));
+
+            $successMessage = 'Your request has been accepted. You will be notified once you will be approved';
+        }
+
+        GroupUser::create([
+            'status' => $status,
+            'role' => GroupUserRole::USER->value,
+            'user_id' => $user->id,
+            'group_id' => $group->id,
+            'created_by' => $user->id,
+        ]);
+
+        return back()->with('success', $successMessage);
+    }
+
+    public function approveRequest(Request $request, Group $group)
+    {
+        if (!$group->isAdmin(Auth::id())) {
+            return response("You don't have permission to perform this action", 403);
+        }
+
+        $data = $request->validate([
+            'user_id' => ['required'],
+            'action' => ['required']
+        ]);
+
+        $groupUser = GroupUser::where('user_id', $data['user_id'])
+            ->where('group_id', $group->id)
+            ->where('status', GroupUserStatus::PENDING->value)
+            ->first();
+
+        if ($groupUser) {
+            $approved = false;
+            if ($data['action'] === 'approve') {
+                $approved = true;
+                $groupUser->status = GroupUserStatus::APPROVED->value;
+            } else {
+                $groupUser->status = GroupUserStatus::REJECTED->value;
+            }
+            $groupUser->save();
+
+            $user = $groupUser->user;
+            $user->notify(new RequestApproved($groupUser->group, $user, $approved));
+
+            return back()->with('success', 'User "' . $user->name . '" was ' . ($approved ? 'approved' : 'rejected'));
+        }
+
+        return back();
     }
 }
