@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [GroupController::class, 'store'])
             ->name('group.create');
 
+        Route::put('/{group:slug}', [GroupController::class, 'update'])
+            ->name('group.update');
+
         Route::post('/update-images/{group:slug}', [GroupController::class, 'updateImage'])
             ->name('group.updateImages');
 
@@ -45,6 +48,12 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/approve-request/{group:slug}', [GroupController::class, 'approveRequest'])
             ->name('group.approveRequest');
+
+        Route::delete('/remove-user/{group:slug}', [GroupController::class, 'removeUser'])
+            ->name('group.removeUser');
+
+        Route::post('/change-role/{group:slug}', [GroupController::class, 'changeRole'])
+            ->name('group.changeRole');
     });
 
     // Posts

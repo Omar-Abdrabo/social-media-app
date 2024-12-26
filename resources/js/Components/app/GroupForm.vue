@@ -37,7 +37,8 @@ const editorConfig = {
 
     <div class="mb-3 dark:text-gray-100">
         <label>About Group</label>
-        <ckeditor :editor="editor" v-model="form.about" :config="editorConfig"></ckeditor>
+        <InputTextarea v-model="form.about" class="w-full"/>
+        <!-- <ckeditor :editor="editor" v-model="form.about" :config="editorConfig"></ckeditor> -->
     </div>
 </template>
 

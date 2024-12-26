@@ -54,12 +54,13 @@ class Group extends Model
 
     public function isOwner($userId): bool
     {
+        //check if the user is the owner of the group (user_id)
         return $this->user_id == $userId;
     }
 
     public function adminUsers(): BelongsToMany
     {
-        //its return a collection of users who are admin of the group
+        //its return a collection of users who are admins of the group
         return $this->belongsToMany(User::class, 'group_users')
             ->wherePivot('role', GroupUserRole::ADMIN->value);
     }
