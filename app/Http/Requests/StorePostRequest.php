@@ -51,16 +51,16 @@ class StorePostRequest extends FormRequest
                 File::types(self::$extensions),
             ],
             'user_id' => ['numeric'],
-            // 'group_id' => ['nullable', 'exists:groups,id', function ($attribute, $value, \Closure $fail) {
-            //     $groupUser = GroupUser::where('user_id', Auth::id())
-            //         ->where('group_id', $value)
-            //         ->where('status', GroupUserStatus::APPROVED->value)
-            //         ->exists();
+            'group_id' => ['nullable', 'exists:groups,id', function ($attribute, $value, \Closure $fail) {
+                $groupUser = GroupUser::where('user_id', Auth::id())
+                    ->where('group_id', $value)
+                    ->where('status', GroupUserStatus::APPROVED->value)
+                    ->exists();
 
-            //     if (!$groupUser) {
-            //         $fail('You don\'t have permission to create post in this group');
-            //     }
-            // }]
+                if (!$groupUser) {
+                    $fail('You don\'t have permission to create post in this group');
+                }
+            }]
         ];
     }
 

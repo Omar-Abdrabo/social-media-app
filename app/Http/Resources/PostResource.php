@@ -26,15 +26,12 @@ class PostResource extends JsonResource
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
             'user' => new UserResource($this->user),
-            // 'group' => $this->group,
-            // 'group' => new GroupResource($this->group),
-            'attachments' => $this->attachments,
+            'group' => new GroupResource($this->group),
             'attachments' => PostAttachmentResource::collection($this->attachments),
             'num_of_reactions' => $this->reactions_count,
             // 'current_user_has_reaction' =>  $this->reactions()->where('user_id', Auth::id())->exists(), // Query-Based approach but we did eager loading so we don't need to query the database again
             'current_user_has_reaction' => $this->reactions->count() > 0, // Relation-Based approach but we did eager loading so we can use this because we already have the relationship
-            // 'comments' => CommentResource::collection($this->latest5Comments), //old way
-            'comments' =>self::convertCommentsIntoTree($comments),
+            'comments' => self::convertCommentsIntoTree($comments),
             'num_of_comments' => count($comments),
         ];
     }

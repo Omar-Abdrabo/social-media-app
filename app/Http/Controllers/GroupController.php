@@ -131,6 +131,26 @@ class GroupController extends Controller
         return back()->with('success', "Group was updated");
     }
 
+    /**
+     * Updates the cover image and thumbnail for a group.
+     *
+     * This method is responsible for handling the upload and storage of a group's cover image and thumbnail. It first checks if the
+     * authenticated user is an admin of the group. If not, it returns a 403 Forbidden response. It then validates the request input,
+     * which should include 'cover' and 'thumbnail' fields, both of which are nullable and must be image files.
+     *
+     * If a cover image is provided, it first deletes the existing cover image (if any) and then stores the new cover image in the
+     * 'group-{group_id}' directory on the 'public' disk. The 'cover_path' field of the group is then updated with the new file path.
+     *
+     * If a thumbnail image is provided, it first deletes the existing thumbnail image (if any) and then stores the new thumbnail image
+     * in the 'group-{group_id}' directory on the 'public' disk. The 'thumbnail_path' field of the group is then updated with the new
+     * file path.
+     *
+     * Finally, the method returns a redirect response with a success message.
+     *
+     * @param Request $request The HTTP request object.
+     * @param Group $group The group whose images are being updated.
+     * @return \Illuminate\Http\RedirectResponse A redirect response with a success message.
+     */
     public function updateImage(Request $request, Group $group)
     {
         if (!$group->isAdmin(Auth::id())) {
@@ -169,6 +189,18 @@ class GroupController extends Controller
         return back()->with('success', $success);
     }
 
+    /**
+     * Invites a user to join a group.
+     *
+     * This method handles the process of inviting a user to join a group. It first checks if the user is already a member of the group, and if so,
+     *  deletes the existing group user record. It then generates a random token and creates a new group user record with a pending status,
+     *  a user role, and the generated token. The token is set to expire after 24 hours. Finally,
+     *  it sends a notification to the user informing them of the invitation.
+     *
+     * @param InviteUsersRequest $request The request object containing the user and group information.
+     * @param Group $group The group to which the user is being invited.
+     * @return \Illuminate\Http\RedirectResponse A redirect response with a success message.
+     */
     public function inviteUsers(InviteUsersRequest $request, Group $group)
     {
         $data = $request->validated();
@@ -199,6 +231,17 @@ class GroupController extends Controller
         return back()->with('success', 'User was invited to join to group');
     }
 
+    /**
+     * Approves a user's invitation to join a group.
+     *
+     * This method is used to approve a user's request to join a group. It first checks the validity of the provided token,
+     * ensuring that the link is not expired or already used. If the token is valid, it updates the status of the GroupUser
+     * record to 'approved', marks the token as used, and notifies the group's administrators of the approval. Finally, it
+     * redirects the user to the group's profile page with a success message.
+     *
+     * @param string $token The token associated with the user's invitation.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function approveInvitation(string $token)
     {
         $groupUser = GroupUser::query()
@@ -230,6 +273,19 @@ class GroupController extends Controller
             ->with('success', 'You accepted to join to group "' . $groupUser->group->name . '"');
     }
 
+    /**
+     * Handles a user's request to join a group.
+     *
+     * This method is used when a user wants to join a group. It first checks if the group
+     * has auto-approval enabled. If so, it sets the user's status to 'approved' and
+     * creates a new GroupUser record with the appropriate status and role. If auto-approval
+     * is not enabled, it sets the user's status to 'pending' and sends a notification to
+     * the group's administrators. It then creates a new GroupUser record and redirects
+     * the user back to the previous page with a success message.
+     *
+     * @param Group $group The group the user is requesting to join.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function join(Group $group)
     {
         $user = \request()->user();
@@ -256,6 +312,19 @@ class GroupController extends Controller
         return back()->with('success', $successMessage);
     }
 
+    /**
+     * Approves or rejects a user's request to join a group.
+     *
+     * This method is used by group administrators to approve or reject a user's request
+     * to join a group. It first checks if the current user is an admin of the group. If
+     * so, it updates the status of the GroupUser record to either 'approved' or
+     * 'rejected' based on the 'action' parameter. It then notifies the user of the
+     * decision.
+     *
+     * @param Request $request The incoming HTTP request, containing the 'user_id' and 'action' parameters.
+     * @param Group $group The group for which the request is being approved or rejected.
+     * @return \Illuminate\Http\Response
+     */
     public function approveRequest(Request $request, Group $group)
     {
         if (!$group->isAdmin(Auth::id())) {
@@ -291,6 +360,19 @@ class GroupController extends Controller
         return back();
     }
 
+    /**
+     * Removes a user from the specified group.
+     *
+     * This method is used to remove a user from a group. It first checks if the
+     * current user is an admin of the group, and if the user being removed is not
+     * the owner of the group. If these conditions are met, it deletes the
+     * corresponding GroupUser record and notifies the user that they have been
+     * removed from the group.
+     *
+     * @param Request $request The incoming HTTP request.
+     * @param Group $group The group from which the user is being removed.
+     * @return \Illuminate\Http\Response
+     */
     public function removeUser(Request $request, Group $group)
     {
         if (!$group->isAdmin(Auth::id())) {
@@ -320,6 +402,19 @@ class GroupController extends Controller
         return back();
     }
 
+    /**
+     * Changes the role of a user in a group.
+     *
+     * This method is used to update the role of a user within a specific group. It
+     * first checks if the current user is an admin of the group, and if the user
+     * whose role is being changed is not the owner of the group. If these
+     * conditions are met, it updates the role of the user in the GroupUser model
+     * and notifies the user of the role change.
+     *
+     * @param Request $request The incoming HTTP request.
+     * @param Group $group The group in which the user's role is being changed.
+     * @return \Illuminate\Http\Response
+     */
     public function changeRole(Request $request, Group $group)
     {
         if (!$group->isAdmin(Auth::id())) {
