@@ -2,28 +2,75 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Post;
 use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\Follower;
 use Illuminate\Http\Request;
+use App\Models\PostAttachment;
+use App\Http\Resources\PostResource;
 use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Resources\PostAttachmentResource;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class ProfileController extends Controller
 {
 
-    public function index(User $user)
+    /**
+     * Displays the user's profile page.
+     *
+     * @param Request $request
+     * @param User $user
+     * @return Response
+     */
+    public function index(Request $request, User $user)
     {
+        $isCurrentUserFollower = false;
+        if (!Auth::guest()) {
+            $isCurrentUserFollower = Follower::where('user_id', $user->id)->where('follower_id', Auth::id())->exists();
+        }
+        $followerCount = Follower::where('user_id', $user->id)->count();
+
+        $posts = Post::postsForTimeline(Auth::id(), false)
+            ->leftJoin('users AS u', 'u.pinned_post_id', 'posts.id')
+            ->where('user_id', $user->id)
+            ->whereNull('group_id')
+            ->orderBy('u.pinned_post_id', 'desc')
+            ->orderBy('posts.created_at', 'desc')
+            ->paginate(10);
+
+        $posts = PostResource::collection($posts);
+        if ($request->wantsJson()) {
+            return $posts;
+        }
+
+        $followers = $user->followers;
+
+        $followings = $user->followings;
+
+        $photos = PostAttachment::query()
+            ->where('mime', 'like', 'image/%')
+            ->where('created_by', $user->id)
+            ->latest()
+            ->get();
+
         return Inertia::render('Profile/View', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
             'success' => session('success'),
+            'isCurrentUserFollower' => $isCurrentUserFollower,
+            'followerCount' => $followerCount,
             'user' => new UserResource($user),
+            'posts' => $posts,
+            'followers' => UserResource::collection($followers),
+            'followings' => UserResource::collection($followings),
+            'photos' => PostAttachmentResource::collection($photos)
         ]);
     }
 
