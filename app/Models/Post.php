@@ -56,11 +56,18 @@ class Post extends Model
         // return $this->hasMany(Comment::class)->latest()->limit(5); // lazy loading its load 5 comments for each post (not efficient)
     }
 
+    /**
+     * Retrieves posts for the user's timeline.
+     *
+     * @param int $userId The ID of the user.
+     * @param bool $getLatest Whether to retrieve the latest posts.
+     * @return \Illuminate\Database\Eloquent\Builder The query builder for the posts.
+     */
     public static function postsForTimeline($userId, $getLatest = true): Builder
     {
         $query = Post::query() // SELECT * FROM posts
             ->withCount('reactions') // SELECT COUNT(*) from reactions
-            ->with([
+            ->with([ // eager loading
                 'user',
                 'group',
                 'group.currentUserGroup',
