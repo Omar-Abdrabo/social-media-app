@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Post;
+use DOMDocument;
 // use Illuminate\Http\Request;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Comment;
 use App\Models\Reaction;
@@ -400,6 +401,15 @@ class PostController extends Controller
         ]);
     }
 
+    /**
+     * Generates social media post content using the OpenAI API based on a provided prompt.
+     *
+     * This method takes a prompt from the request, sends it to the OpenAI API to generate formatted content with multiple paragraphs,
+     *  and then returns the generated content.
+     *
+     * @param Request $request The request containing the prompt.
+     * @return \Illuminate\Http\Response The response with the generated post content.
+     */
     public function aiPostContent(Request $request)
     {
         $prompt =  $request->get('prompt');
@@ -422,5 +432,100 @@ class PostController extends Controller
             'content' => $result->choices[0]->message->content
             // 'content' => "\"🎉 Exciting news! We're thrilled to announce that we just released a brand new feature on our app/website! 💥 Get ready to experience the next level of convenience and efficiency with this game-changing addition. 🚀 Try it out now and let us know what you think! 😍 #NewFeatureAlert #UpgradeYourExperience\""
         ]);
+    }
+
+    /**
+     * Fetches the Open Graph (OG) tags from a given URL.
+     *
+     * This method takes a URL from the request, fetches the HTML content of the page,
+     * parses the HTML to extract the OG tags, and returns an array of the extracted tags.
+     *
+     * @param Request $request The request containing the URL.
+     * @return array The array of extracted OG tags.
+     */
+    public function fetchUrlPreview(Request $request)
+    {
+        $data = $request->validate([
+            'url' => 'url'
+        ]);
+        $url = $data['url'];
+
+        $html = file_get_contents($url);
+
+        $dom = new DOMDocument();
+
+        // Suppress warnings for malformed HTML
+        libxml_use_internal_errors(true);
+
+        // Load HTML content into the DOMDocument
+        $dom->loadHTML($html);
+
+        // Suppress warnings for malformed HTML
+        libxml_use_internal_errors(false);
+
+        $ogTags = [];
+        $metaTags = $dom->getElementsByTagName('meta');
+        foreach ($metaTags as $tag) {
+            $property = $tag->getAttribute('property');
+            if (str_starts_with($property, 'og:')) {
+                $ogTags[$property] = $tag->getAttribute('content');
+            }
+        }
+
+        return $ogTags;
+    }
+
+    /**
+     * Pins or unpins a post for a group or a user.
+     *
+     * This method handles the logic for pinning or unpinning a post. If the request is for a group,
+     * it checks if the user is an admin of the group. If the request is for a user, it updates the
+     * user's pinned post. The method returns a success message indicating whether the post was
+     * pinned or unpinned.
+     *
+     * @param Request $request The HTTP request containing the 'forGroup' parameter.
+     * @param Post $post The post to be pinned or unpinned.
+     * @return \Illuminate\Http\RedirectResponse A redirect response with a success message.
+     */
+    public function pinUnpin(Request $request, Post $post)
+    {
+        $request->validate([
+            'forGroup' => 'boolean'
+        ]);
+
+        $forGroup = $request->get('forGroup', false);
+        $group = $post->group;
+
+        if ($forGroup && !$group) {
+            return response("Invalid Request", 400);
+        }
+
+        if ($forGroup && !$group->isAdmin(Auth::id())) {
+            return response("You don't have permission to perform this action", 403);
+        }
+
+        $pinned = false;
+        if ($forGroup && $group->isAdmin(Auth::id())) {
+            if ($group->pinned_post_id === $post->id) {
+                $group->pinned_post_id = null;
+            } else {
+                $pinned = true;
+                $group->pinned_post_id = $post->id;
+            }
+            $group->save();
+        }
+
+        if (!$forGroup) {
+            $user = $request->user();
+            if ($user->pinned_post_id === $post->id) {
+                $user->pinned_post_id = null;
+            } else {
+                $pinned = true;
+                $user->pinned_post_id = $post->id;
+            }
+            $user->save();
+        }
+
+        return back()->with('success', 'Post was successfully ' . ($pinned ? 'pinned' : 'unpinned'));
     }
 }

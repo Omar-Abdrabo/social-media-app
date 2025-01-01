@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', [HomeController::class, 'index'])->middleware(['auth', 'verified'])->name('home');
@@ -88,6 +89,9 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/ai-post', [PostController::class, 'aiPostContent'])
             ->name('post.aiContent');
+
+        Route::post('/fetch-url-preview', [PostController::class, 'fetchUrlPreview'])
+            ->name('post.fetchUrlPreview');
     });
 
     // Comments
@@ -99,6 +103,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/comment/{comment}/reaction', [PostController::class, 'commentReaction'])
         ->name('comment.reaction');
+
+    // Search
+    Route::get('/search/{search?}', [SearchController::class, 'search'])
+        ->name('search');
+
+    // pin and unpin posts
+    Route::post('/{post}/pin', [PostController::class, 'pinUnpin'])
+        ->name('post.pinUnpin');
 });
 
 require __DIR__ . '/auth.php';

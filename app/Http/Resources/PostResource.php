@@ -37,11 +37,14 @@ class PostResource extends JsonResource
     }
 
     /**
+     * Converts a flat array of comments into a nested tree structure.
      *
+     * This method recursively traverses the comments array, grouping child comments under their parent comments.
+     * The resulting tree structure is returned as an array.
      *
-     * @param \App\Models\Comment[] $comments
-     * @param                       $parentId
-     * @return array
+     * @param \App\Models\Comment[] $comments The flat array of comments to be converted.
+     * @param int|null $parentId The ID of the parent comment, or null for top-level comments.
+     * @return array The nested tree structure of comments.
      */
     private static function convertCommentsIntoTree($comments, $parentId = null): array
     {
